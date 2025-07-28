@@ -146,18 +146,24 @@
         <h2>Game Rules</h2>
         <ul>
             <li><strong>Objective:</strong> Be the last player with dots on the board.</li>
-            <li><strong>Turns:</strong> Players alternate turns clicking on grid cells.</li>
-            <li><strong>Placing Dots:</strong> 
+            <li><strong>Initial Setup:</strong> Both players start with 1 dot placed randomly</li>
+            <li><strong>First Turn:</strong> 
                 <ul>
-                    <li>Click an empty cell to place 3 dots of your color</li>
-                    <li>Click your own cell to add 1 dot</li>
+                    <li>Blue places 3 dots on any empty cell</li>
+                    <li>Red places 3 dots on any empty cell</li>
                 </ul>
             </li>
-            <li><strong>Explosions:</strong> When a cell reaches 4 dots, it explodes:
+            <li><strong>Subsequent Turns:</strong> 
                 <ul>
-                    <li>Sends 1 dot to each adjacent cell (up, down, left, right)</li>
-                    <li>If an enemy cell is hit, it converts to your color</li>
-                    <li>Explosions can trigger chain reactions</li>
+                    <li>Players can only add 1 dot to their own cells</li>
+                    <li>No more placing dots on empty cells</li>
+                </ul>
+            </li>
+            <li><strong>Explosions:</strong> When a cell reaches 4 dots:
+                <ul>
+                    <li>Sends exactly 1 dot to each adjacent cell (up, down, left, right)</li>
+                    <li>Converts enemy cells to your color</li>
+                    <li>Can trigger chain reactions</li>
                 </ul>
             </li>
         </ul>
@@ -175,6 +181,7 @@
             let currentPlayer = BLUE_PLAYER;
             let board = createEmptyBoard();
             let gameOver = false;
+            let turnCount = 0;
             
             // Initialize the game board with one random dot for each player
             function createEmptyBoard() {
@@ -237,27 +244,34 @@
                 
                 const cell = board[row][col];
                 
-                // If cell is empty or owned by current player
-                if (!cell.owner || cell.owner === currentPlayer) {
+                // First two turns (blue and red place 3 dots)
+                if (turnCount < 2) {
                     if (!cell.owner) {
                         // First click on empty cell - add 3 dots
                         cell.owner = currentPlayer;
                         cell.dots = 3;
-                    } else {
-                        // Subsequent clicks - add 1 dot
-                        cell.dots++;
-                    }
-                    
-                    // Check for explosion
-                    if (cell.dots >= 4) {
-                        explodeCell(row, col);
-                    } else {
+                        turnCount++;
                         switchPlayer();
                     }
-                    
-                    renderBoard();
-                    checkGameOver();
+                } 
+                // Subsequent turns
+                else {
+                    // Can only click your own cells
+                    if (cell.owner === currentPlayer) {
+                        // Add 1 dot
+                        cell.dots++;
+                        
+                        // Check for explosion
+                        if (cell.dots >= 4) {
+                            explodeCell(row, col);
+                        } else {
+                            switchPlayer();
+                        }
+                    }
                 }
+                
+                renderBoard();
+                checkGameOver();
             }
             
             function explodeCell(row, col) {
@@ -282,7 +296,7 @@
                     [-1, 0], [1, 0], [0, -1], [0, 1]
                 ];
                 
-                // Send dots to adjacent cells
+                // Send exactly 1 dot to each adjacent cell
                 for (const [dr, dc] of directions) {
                     const newRow = row + dr;
                     const newCol = col + dc;
@@ -294,9 +308,10 @@
                         if (targetCell.owner !== cell.owner) {
                             // Convert cell to current player's color
                             targetCell.owner = cell.owner;
+                            targetCell.dots = 0; // Reset dots when converting
                         }
                         
-                        targetCell.dots++;
+                        targetCell.dots += 1;
                         
                         // Check if this triggers another explosion
                         if (targetCell.dots >= 4) {
@@ -308,6 +323,8 @@
                         }
                     }
                 }
+                
+                switchPlayer();
             }
             
             function switchPlayer() {
@@ -329,7 +346,6 @@
                 }
                 
                 if (blueCount === 0 && redCount === 0) {
-                    // Shouldn't happen, but just in case
                     gameOver = true;
                     turnIndicator.textContent = "Game Over - It's a tie!";
                     turnIndicator.style.backgroundColor = '#333';
@@ -348,6 +364,7 @@
                 board = createEmptyBoard();
                 currentPlayer = BLUE_PLAYER;
                 gameOver = false;
+                turnCount = 0;
                 turnIndicator.textContent = "Blue Player's Turn";
                 turnIndicator.style.backgroundColor = '#3498db';
                 renderBoard();
