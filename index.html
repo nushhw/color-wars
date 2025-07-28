@@ -1,9 +1,90 @@
 <!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><title>Chain Reaction</title>
-<link rel="stylesheet" href="style.css"></head>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Color Wars Dot Game</title>
+  <style>
+    body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #111; }
+    canvas { border: 2px solid #fff; background: #eee; }
+  </style>
+</head>
 <body>
-<canvas id="board" width="500" height="500"></canvas>
-<script src="script.js"></script>
+  <canvas id="canvas" width="500" height="500"></canvas>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const size = 5;
+    const cellSize = canvas.width / size;
+    const grid = Array.from({ length: size }, () => Array.from({ length: size }, () => ({ dots: 0, owner: null })));
+
+    let currentPlayer = 'red';
+
+    canvas.addEventListener('click', (e) => {
+      const x = Math.floor(e.offsetX / cellSize);
+      const y = Math.floor(e.offsetY / cellSize);
+      const cell = grid[y][x];
+
+      if (cell.owner === null || cell.owner === currentPlayer) {
+        cell.dots = cell.owner ? cell.dots + 1 : 3;
+        cell.owner = currentPlayer;
+        resolveExplosions();
+        currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
+        draw();
+      }
+    });
+
+    function resolveExplosions() {
+      let changed;
+      do {
+        changed = false;
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            const cell = grid[y][x];
+            if (cell.dots >= 4) {
+              changed = true;
+              const spreadDirs = [[0,1],[1,0],[-1,0],[0,-1]];
+              cell.dots -= 4;
+              for (const [dx, dy] of spreadDirs) {
+                const nx = x + dx, ny = y + dy;
+                if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
+                  const neighbor = grid[ny][nx];
+                  neighbor.dots++;
+                  neighbor.owner = currentPlayer;
+                }
+              }
+              if (cell.dots === 0) cell.owner = null;
+            }
+          }
+        }
+      } while (changed);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          ctx.strokeStyle = '#000';
+          ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+          const cell = grid[y][x];
+          if (cell.dots > 0) {
+            ctx.fillStyle = cell.owner;
+            for (let i = 0; i < cell.dots; i++) {
+              ctx.beginPath();
+              ctx.arc(
+                x * cellSize + cellSize / 2 + (i - 1.5) * 6,
+                y * cellSize + cellSize / 2,
+                5,
+                0,
+                2 * Math.PI
+              );
+              ctx.fill();
+            }
+          }
+        }
+      }
+    }
+
+    draw();
+  </script>
 </body>
 </html>
