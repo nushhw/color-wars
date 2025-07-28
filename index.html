@@ -176,7 +176,7 @@
             let board = createEmptyBoard();
             let gameOver = false;
             
-            // Initialize the game board
+            // Initialize the game board with one random dot for each player
             function createEmptyBoard() {
                 const board = [];
                 for (let i = 0; i < 5; i++) {
@@ -189,7 +189,26 @@
                     }
                     board.push(row);
                 }
+                
+                // Place one initial dot for each player in random positions
+                placeInitialDot(board, BLUE_PLAYER);
+                placeInitialDot(board, RED_PLAYER);
+                
                 return board;
+            }
+            
+            function placeInitialDot(board, player) {
+                let placed = false;
+                while (!placed) {
+                    const row = Math.floor(Math.random() * 5);
+                    const col = Math.floor(Math.random() * 5);
+                    
+                    if (board[row][col].owner === null) {
+                        board[row][col].owner = player;
+                        board[row][col].dots = 1;
+                        placed = true;
+                    }
+                }
             }
             
             function renderBoard() {
