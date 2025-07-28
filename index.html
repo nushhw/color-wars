@@ -1,90 +1,345 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Color Wars Dot Game</title>
-  <style>
-    body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #111; }
-    canvas { border: 2px solid #fff; background: #eee; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Wars</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .game-info {
+            margin-bottom: 20px;
+            text-align: center;
+            max-width: 600px;
+        }
+        
+        .turn-indicator {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(5, 60px);
+            grid-template-rows: repeat(5, 60px);
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .cell {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .cell.empty {
+            background-color: #ddd;
+        }
+        
+        .cell.blue {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .cell.red {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .controls {
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #27ae60;
+        }
+        
+        .rules {
+            margin-top: 30px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+        }
+        
+        .rules h2 {
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        
+        .rules ul {
+            padding-left: 20px;
+        }
+        
+        .rules li {
+            margin-bottom: 10px;
+        }
+        
+        .explosion {
+            animation: explode 0.5s;
+        }
+        
+        @keyframes explode {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
 </head>
 <body>
-  <canvas id="canvas" width="500" height="500"></canvas>
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const size = 5;
-    const cellSize = canvas.width / size;
-    const grid = Array.from({ length: size }, () => Array.from({ length: size }, () => ({ dots: 0, owner: null })));
+    <h1>Color Wars</h1>
+    
+    <div class="game-info">
+        <p>A turn-based territory control game where you try to dominate the grid by triggering explosive chain reactions!</p>
+    </div>
+    
+    <div class="turn-indicator" id="turnIndicator">Blue Player's Turn</div>
+    
+    <div class="game-board" id="gameBoard"></div>
+    
+    <div class="controls">
+        <button id="resetButton">Reset Game</button>
+    </div>
+    
+    <div class="rules">
+        <h2>Game Rules</h2>
+        <ul>
+            <li><strong>Objective:</strong> Be the last player with dots on the board.</li>
+            <li><strong>Turns:</strong> Players alternate turns clicking on grid cells.</li>
+            <li><strong>Placing Dots:</strong> 
+                <ul>
+                    <li>Click an empty cell to place 3 dots of your color</li>
+                    <li>Click your own cell to add 1 dot</li>
+                </ul>
+            </li>
+            <li><strong>Explosions:</strong> When a cell reaches 4 dots, it explodes:
+                <ul>
+                    <li>Sends 1 dot to each adjacent cell (up, down, left, right)</li>
+                    <li>If an enemy cell is hit, it converts to your color</li>
+                    <li>Explosions can trigger chain reactions</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
 
-    let currentPlayer = 'red';
-
-    canvas.addEventListener('click', (e) => {
-      const x = Math.floor(e.offsetX / cellSize);
-      const y = Math.floor(e.offsetY / cellSize);
-      const cell = grid[y][x];
-
-      if (cell.owner === null || cell.owner === currentPlayer) {
-        cell.dots = cell.owner ? cell.dots + 1 : 3;
-        cell.owner = currentPlayer;
-        resolveExplosions();
-        currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
-        draw();
-      }
-    });
-
-    function resolveExplosions() {
-      let changed;
-      do {
-        changed = false;
-        for (let y = 0; y < size; y++) {
-          for (let x = 0; x < size; x++) {
-            const cell = grid[y][x];
-            if (cell.dots >= 4) {
-              changed = true;
-              const spreadDirs = [[0,1],[1,0],[-1,0],[0,-1]];
-              cell.dots -= 4;
-              for (const [dx, dy] of spreadDirs) {
-                const nx = x + dx, ny = y + dy;
-                if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
-                  const neighbor = grid[ny][nx];
-                  neighbor.dots++;
-                  neighbor.owner = currentPlayer;
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const gameBoard = document.getElementById('gameBoard');
+            const turnIndicator = document.getElementById('turnIndicator');
+            const resetButton = document.getElementById('resetButton');
+            
+            const BLUE_PLAYER = 'blue';
+            const RED_PLAYER = 'red';
+            
+            let currentPlayer = BLUE_PLAYER;
+            let board = createEmptyBoard();
+            let gameOver = false;
+            
+            // Initialize the game board
+            function createEmptyBoard() {
+                const board = [];
+                for (let i = 0; i < 5; i++) {
+                    const row = [];
+                    for (let j = 0; j < 5; j++) {
+                        row.push({
+                            owner: null,
+                            dots: 0
+                        });
+                    }
+                    board.push(row);
                 }
-              }
-              if (cell.dots === 0) cell.owner = null;
+                return board;
             }
-          }
-        }
-      } while (changed);
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          ctx.strokeStyle = '#000';
-          ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
-          const cell = grid[y][x];
-          if (cell.dots > 0) {
-            ctx.fillStyle = cell.owner;
-            for (let i = 0; i < cell.dots; i++) {
-              ctx.beginPath();
-              ctx.arc(
-                x * cellSize + cellSize / 2 + (i - 1.5) * 6,
-                y * cellSize + cellSize / 2,
-                5,
-                0,
-                2 * Math.PI
-              );
-              ctx.fill();
+            
+            function renderBoard() {
+                gameBoard.innerHTML = '';
+                
+                for (let i = 0; i < 5; i++) {
+                    for (let j = 0; j < 5; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        
+                        if (board[i][j].owner) {
+                            cell.classList.add(board[i][j].owner);
+                            cell.textContent = board[i][j].dots;
+                        } else {
+                            cell.classList.add('empty');
+                        }
+                        
+                        cell.addEventListener('click', () => handleCellClick(i, j));
+                        gameBoard.appendChild(cell);
+                    }
+                }
             }
-          }
-        }
-      }
-    }
-
-    draw();
-  </script>
+            
+            function handleCellClick(row, col) {
+                if (gameOver) return;
+                
+                const cell = board[row][col];
+                
+                // If cell is empty or owned by current player
+                if (!cell.owner || cell.owner === currentPlayer) {
+                    if (!cell.owner) {
+                        // First click on empty cell - add 3 dots
+                        cell.owner = currentPlayer;
+                        cell.dots = 3;
+                    } else {
+                        // Subsequent clicks - add 1 dot
+                        cell.dots++;
+                    }
+                    
+                    // Check for explosion
+                    if (cell.dots >= 4) {
+                        explodeCell(row, col);
+                    } else {
+                        switchPlayer();
+                    }
+                    
+                    renderBoard();
+                    checkGameOver();
+                }
+            }
+            
+            function explodeCell(row, col) {
+                const cell = board[row][col];
+                if (!cell.owner || cell.dots < 4) return;
+                
+                // Animate the explosion
+                const cellElement = gameBoard.children[row * 5 + col];
+                cellElement.classList.add('explosion');
+                setTimeout(() => {
+                    cellElement.classList.remove('explosion');
+                }, 500);
+                
+                // Reset the exploding cell
+                cell.dots -= 4;
+                if (cell.dots === 0) {
+                    cell.owner = null;
+                }
+                
+                // Directions: up, down, left, right
+                const directions = [
+                    [-1, 0], [1, 0], [0, -1], [0, 1]
+                ];
+                
+                // Send dots to adjacent cells
+                for (const [dr, dc] of directions) {
+                    const newRow = row + dr;
+                    const newCol = col + dc;
+                    
+                    // Check if within bounds
+                    if (newRow >= 0 && newRow < 5 && newCol >= 0 && newCol < 5) {
+                        const targetCell = board[newRow][newCol];
+                        
+                        if (targetCell.owner !== cell.owner) {
+                            // Convert cell to current player's color
+                            targetCell.owner = cell.owner;
+                        }
+                        
+                        targetCell.dots++;
+                        
+                        // Check if this triggers another explosion
+                        if (targetCell.dots >= 4) {
+                            setTimeout(() => {
+                                explodeCell(newRow, newCol);
+                                renderBoard();
+                                checkGameOver();
+                            }, 300);
+                        }
+                    }
+                }
+            }
+            
+            function switchPlayer() {
+                currentPlayer = currentPlayer === BLUE_PLAYER ? RED_PLAYER : BLUE_PLAYER;
+                turnIndicator.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} Player's Turn`;
+                turnIndicator.style.backgroundColor = currentPlayer === BLUE_PLAYER ? '#3498db' : '#e74c3c';
+                turnIndicator.style.color = 'white';
+            }
+            
+            function checkGameOver() {
+                let blueCount = 0;
+                let redCount = 0;
+                
+                for (let i = 0; i < 5; i++) {
+                    for (let j = 0; j < 5; j++) {
+                        if (board[i][j].owner === BLUE_PLAYER) blueCount++;
+                        if (board[i][j].owner === RED_PLAYER) redCount++;
+                    }
+                }
+                
+                if (blueCount === 0 && redCount === 0) {
+                    // Shouldn't happen, but just in case
+                    gameOver = true;
+                    turnIndicator.textContent = "Game Over - It's a tie!";
+                    turnIndicator.style.backgroundColor = '#333';
+                } else if (blueCount === 0) {
+                    gameOver = true;
+                    turnIndicator.textContent = "Game Over - Red Player Wins!";
+                    turnIndicator.style.backgroundColor = '#e74c3c';
+                } else if (redCount === 0) {
+                    gameOver = true;
+                    turnIndicator.textContent = "Game Over - Blue Player Wins!";
+                    turnIndicator.style.backgroundColor = '#3498db';
+                }
+            }
+            
+            function resetGame() {
+                board = createEmptyBoard();
+                currentPlayer = BLUE_PLAYER;
+                gameOver = false;
+                turnIndicator.textContent = "Blue Player's Turn";
+                turnIndicator.style.backgroundColor = '#3498db';
+                renderBoard();
+            }
+            
+            resetButton.addEventListener('click', resetGame);
+            
+            // Initialize the game
+            renderBoard();
+            turnIndicator.style.backgroundColor = '#3498db';
+        });
+    </script>
 </body>
 </html>
